@@ -3,10 +3,11 @@ function Add-Log {
     <#
     .NOTES
 	    Title:			Add-Log.ps1
-	    Author:			Curtis Jones
-	    Date:			March 24th, 2017
+	    Author:			Bryan Tisdale
+        Date:			May 31, 2018
 	    Version:		1.0.1
-	    Requirements:		Powershell 3.0
+        Requirements:	Powershell 5.0
+        Original:       https://github.com/hukdizzle/Log
 	
     .SYNOPSIS
         Provides code execution string logging into $env:LOCALAPPDATA\PowerShellLogging directory along with the ability to output to all valid PowerShell streams simultaneously.
