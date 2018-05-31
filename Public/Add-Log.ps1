@@ -1,5 +1,5 @@
-﻿function Add-Log
-{
+﻿using namespace System.Management.Automation
+function Add-Log {
     <#
     .NOTES
 	    Title:			Add-Log.ps1
@@ -33,58 +33,68 @@
     [Alias("Log")]
     param
     (
-        [parameter(Mandatory=$true,Position=0,HelpMessage="The message that will be logged and also output to PowerShell stream if the Out switch is used.")]
+        [parameter(Mandatory = $true, Position = 0, HelpMessage = "The message that will be logged and also output to PowerShell stream if the Out switch is used.")]
         [string]$Message,
-        [parameter(Mandatory=$true,Position=1,HelpMessage="Used to indicate the type of log message and also used to correlate the type of stream to be utilized if the Out switch is used.")]
-        [ValidateSet("Normal","Error","Warning","Debug","Verbose","Information")]
+        [parameter(Mandatory = $true, Position = 1, HelpMessage = "Used to indicate the type of log message and also used to correlate the type of stream to be utilized if the Out switch is used.")]
+        [ValidateSet("Normal", "Error", "Warning", "Debug", "Verbose", "Information")]
         [string]$Type,
-        [parameter(Mandatory=$false,Position=2,HelpMessage="Use switch to output the log message to the corresponding stream and also output it to the console.")]
-        [switch]$Out,
-        [parameter(Mandatory=$false,Position=3,HelpMessage="Provide a valid size for a log file threshold such as 1GB, 500MB, 1024KB, etc. The default parameter value is 100MB.")]
-        [int]$LogFileSizeThreshold=100MB
+        [parameter(Mandatory = $false, Position = 2, HelpMessage = "Use switch to output the log message to the corresponding stream and also output it to the console.")]
+        [switch]$Out,        
+        [parameter(Mandatory = $false, Position = 3, HelpMessage = "Specify a server passthru to create separate log file for individual servers.")]
+        [switch]$Server,
+        [parameter(Mandatory = $false, Position = 4, HelpMessage = "Provide a valid size for a log file threshold such as 1GB, 500MB, 1024KB, etc. The default parameter value is 100MB.")]
+        [int]$LogFileSizeThreshold = 100MB,
+        [parameter(Mandatory = $false, HelpMessage = "Specify a foreground color for output similar to Write-Host.")]
+        [ConsoleColor]$ForegroundColor = $Host.UI.RawUI.ForegroundColor, # Make sure we use the current colours by default
+        [parameter(Mandatory = $false, HelpMessage = "Specify a background color for output similar to Write-Host.")]
+        [ConsoleColor]$BackgroundColor = $Host.UI.RawUI.BackgroundColor
     )
-    begin
-    {
+    begin {
         #If no logFile variable is present in the current PSSession, the logFile path does not exist, or the logFile variable file name does not equal the current invocation execution file name without extension the Set-LogFile function will be called to generate a logFile variable pointing to a new or existing log file based on the name of the invocation script.
 
-        if((-not $logFile) -or (-not [System.IO.File]::Exists($logFile)) -or ([System.IO.Path]::GetFileNameWithoutExtension($logFile) -ne [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.PSCommandPath)))
-        {
-            try
-            {
-                $script:logFile = Set-LogFile -LogFileName $MyInvocation.PSCommandPath -ShowLocation -ErrorAction Stop
+        if ((-not $logFile) -or (-not [System.IO.File]::Exists($logFile)) -or ([System.IO.Path]::GetFileNameWithoutExtension($logFile) -ne [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.PSCommandPath))) {
+            try {
+                #IF THIS LINE BELOW DOESN"T CREATE A Log FILE THAT IS THE NAME OF THE SERVER THEN INVESTIGATE HER
+                #If a server is specified (passed through pipeline) then create an individual file per server.
+                if ($server) {
+                    $script:logFile = Set-LogFile -LogFileName $server -ShowLocation -ErrorAction Stop
+                }
+                else {
+                    $script:logFile = Set-LogFile -LogFileName $MyInvocation.PSCommandPath -ShowLocation -ErrorAction Stop
+                }
             }
-            catch
-            {
+            catch {
                 throw
             }
         }
     }
-    process
-    {   
+    process {   
         
-        if(Test-Path $logfile)
-        {
+        if (Test-Path $logfile) {
             #A string is constructed including the datetime, current PowerShell process ID, executing windows username, log type param, and message string param. The full string is output to the logFile variable with the append switch utilized as to not overwrite any existing entries.
 
             "[$(Get-Date -format 'G') | $($pid) | $($env:username) | $($Type.ToUpper())] $message" | Out-File -FilePath $logFile -Append
 
             #If the out switch is called the following block will be entered. The type param input will determine the switch block to enter which will call the correlating stream cmdlet to add the message string to the corresponding stream but also output it to the console.
 
-            if($out)
-            {
-                switch ($type)
-                {
+            if ($out) {
+                switch ($type) {
                     Normal { Write-Output $message }
                     Error { Write-Error -Message $message }
                     Warning { Write-Warning -Message $message }
                     Debug { Write-Debug -Message $message -Debug }
                     Verbose { Write-Verbose -Message $message -Verbose }
                     Information { 
-                                    if(($PSVersionTable.PSVersion.Major) -ge 5) 
-                                    {
-                                        Write-Information -MessageData $message -InformationAction Continue
-                                    }
-                                }
+                        if (($PSVersionTable.PSVersion.Major) -ge 5) {
+                            $message = [HostInformationMessage]@{
+                                Message         = $message
+                                ForegroundColor = $ForegroundColor
+                                BackgroundColor = $BackgroundColor
+                                NoNewline       = $NoNewline.IsPresent
+                            }
+                            Write-Information -MessageData $message -InformationAction Continue
+                        }
+                    }
 
                 }
             }
@@ -93,26 +103,21 @@
 
             $log = Get-Item $logFile
 
-            if(($log.Length / $logFileSizeThreshold) -ge '1')
-            {
-                try
-                {
+            if (($log.Length / $logFileSizeThreshold) -ge '1') {
+                try {
                     Rename-Item -Path $log.FullName -NewName "$($log.BaseName)_$(Get-Date -Format ddMMyyThhmmss).old" -ErrorAction Stop
                     $script:logFile = Set-LogFile -LogFileName $MyInvocation.PSCommandPath -ErrorAction Stop
                     "Log file $($log.Name) was found to be at $($log.length) Bytes size which is larger than the allowed size threshold of $($logFileSizeThreshold) Bytes, prior log file has been renamed to $($log.BaseName)_$(Get-Date -Format ddMMyyThhmmss).old." | Out-File -FilePath $logFile -Append
                 }
-                catch
-                {
+                catch {
                     throw
                 }
             }
         }
-        else
-        {
+        else {
             break
         }
     }
-    end
-    {
+    end {
     }
 }
