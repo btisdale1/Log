@@ -24,6 +24,15 @@ function Add-Log {
     .PARAMETER LogFileSizeThreshold
 
         Provide a valid size for a log file threshold such as 1GB, 500MB, 1024KB, etc.
+    .PARAMETER Server
+
+        Specify a server passthru to create separate log file for individual servers.
+    .PARAMETER ForegroundColor
+
+        Specify a foreground color for output similar to Write-Host.
+    .PARAMETER BackgroundColor
+
+        Specify a background color for output similar to Write-Host.
     .EXAMPLE
         Add-Log -Message "The reactor core has reached critical mass" -Type Warning -Out
 
