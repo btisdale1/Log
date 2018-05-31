@@ -3,10 +3,11 @@
     <#
     .NOTES
 	    Title:			Set-LogFile.ps1
-	    Author:			Curtis Jones
-	    Date:			March 24th, 2017
-	    Version:		1.0.0
-	    Requirements:		Powershell 3.0
+	    Author:			Bryan Tisdale
+        Date:			May 31, 2018
+	    Version:		1.0.1
+        Requirements:	Powershell 5.0
+        Original:       https://github.com/hukdizzle/Log
 	
     .SYNOPSIS
         Provides log file generation in the $env:LOCALAPPDATA\PowerShellLogging folder based on input from the Add-Log function.
